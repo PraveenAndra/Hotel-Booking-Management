@@ -37,10 +37,13 @@ public class Hotel {
     @Embedded
     private HotelContactInfo contactInfo;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean active;
 
     @OneToMany(mappedBy = "hotel", fetch = FetchType.LAZY)
-    private List<Room> room;
+    private List<Room> rooms;
+
+    @ManyToOne
+    private User owner;
 
 }
