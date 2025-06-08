@@ -35,10 +35,13 @@ public class Inventory {
     private Room room;
 
     @Column(nullable = false)
-    private LocalDate date;
+    private LocalDateTime date;
 
     @Column(nullable = false,columnDefinition = "INTEGER DEFAULT 0")
     private Integer bookCount;
+
+    @Column(nullable = false,columnDefinition = "INTEGER DEFAULT 0")
+    private Integer reservedCount;
 
     @Column(nullable = false)
     private Integer totalCount;
