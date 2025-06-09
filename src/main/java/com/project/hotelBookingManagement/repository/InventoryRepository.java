@@ -28,7 +28,7 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             WHERE i.city = :city
                     AND i.date BETWEEN :startDate AND :endDate
                     AND i.closed = false
-                    AND (i.totalCount - i.bookCount) >= :roomsCount
+                    AND (i.totalCount - i.bookCount - i.reservedCount) >= :roomsCount
             GROUP BY i.hotel, i.room
             HAVING COUNT(i.date) = :dateCount \s
        \s""")
@@ -56,4 +56,6 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             @Param("endDate") LocalDateTime endDate,
             @Param("roomsCount") Integer roomsCount
     );
+
+    List<Inventory> findByHotelAndDateBetween(Hotel hotel, LocalDateTime dateAfter, LocalDateTime dateBefore);
 }

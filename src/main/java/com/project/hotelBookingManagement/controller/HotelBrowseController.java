@@ -3,6 +3,7 @@ package com.project.hotelBookingManagement.controller;
 
 import com.project.hotelBookingManagement.dto.HotelDto;
 import com.project.hotelBookingManagement.dto.HotelInfoDto;
+import com.project.hotelBookingManagement.dto.HotelPriceDto;
 import com.project.hotelBookingManagement.dto.HotelSearchRequest;
 import com.project.hotelBookingManagement.service.HotelService;
 import com.project.hotelBookingManagement.service.InventoryService;
@@ -25,9 +26,9 @@ public class HotelBrowseController {
     private final HotelService hotelService;
 
     @GetMapping("/search")
-    public ResponseEntity<Page<HotelDto>> searchHotels(@RequestBody HotelSearchRequest hotelSearchRequest){
+    public ResponseEntity<Page<HotelPriceDto>> searchHotels(@RequestBody HotelSearchRequest hotelSearchRequest){
 
-        Page<HotelDto> page = inventoryService.searchHotels(hotelSearchRequest);
+        Page<HotelPriceDto> page = inventoryService.searchHotels(hotelSearchRequest);
 
         return ResponseEntity.ok(page);
 
