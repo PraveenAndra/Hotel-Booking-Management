@@ -7,6 +7,7 @@ import com.project.hotelBookingManagement.dto.GuestDto;
 import com.project.hotelBookingManagement.entity.*;
 import com.project.hotelBookingManagement.entity.enums.BookingStatus;
 import com.project.hotelBookingManagement.exception.ResourceNotFoundException;
+import com.project.hotelBookingManagement.exception.UnauthorizedException;
 import com.project.hotelBookingManagement.repository.BookingRepository;
 import com.project.hotelBookingManagement.repository.HotelRepository;
 import com.project.hotelBookingManagement.repository.InventoryRepository;
@@ -15,6 +16,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -60,9 +62,7 @@ public class BookingServiceImpl implements BookingService{
         inventoryRepository.saveAll(inventoryList);
 
         //Create the booking
-
-        User user = new User();
-        user.setId(1L); //TODO: Remove Dummy user
+        User user = getCurrentUser();
 
         //TODO: Calculate dynamic amount
 
@@ -83,11 +83,19 @@ public class BookingServiceImpl implements BookingService{
 
     }
 
+    private User getCurrentUser() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
     @Override
     public BookingDto addGuests(Long bookingId, List<GuestDto> guestDtoList) {
         log.info("Adding Guests for booking with id: {}", bookingId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: "+bookingId));
+        User user = getCurrentUser();
+        if(!user.equals(booking.getUser())){
+            throw new UnauthorizedException("Booking does not belong to this user with id:"+ user.getId());
+        }
         if(hasBookingExpired(booking)){
             throw new IllegalStateException("Booking has already expired");
         }
@@ -96,7 +104,7 @@ public class BookingServiceImpl implements BookingService{
         }
         for(GuestDto guestDto:guestDtoList){
             Guest guest = modelMapper.map(guestDto, Guest.class);
-            guest.setUser(booking.getUser());
+            guest.setUser(user);
             guest = guestRepository.save(guest);
             booking.getGuests().add(guest);
         }

@@ -4,13 +4,16 @@ import com.project.hotelBookingManagement.config.MapperConfig;
 import com.project.hotelBookingManagement.dto.RoomDto;
 import com.project.hotelBookingManagement.entity.Hotel;
 import com.project.hotelBookingManagement.entity.Room;
+import com.project.hotelBookingManagement.entity.User;
 import com.project.hotelBookingManagement.exception.ResourceNotFoundException;
+import com.project.hotelBookingManagement.exception.UnauthorizedException;
 import com.project.hotelBookingManagement.repository.HotelRepository;
 import com.project.hotelBookingManagement.repository.RoomRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,6 +37,12 @@ public class RoomServiceImpl implements RoomService{
         Hotel hotel = hotelRepository
                 .findById(hotelId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with id: "+ hotelId));
+
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if(!user.equals(hotel.getOwner())){
+            throw new UnauthorizedException("This user does not own this hotel with id: "+hotelId);
+        }
         room.setHotel(hotel);
         room = roomRepository.save(room);
 
@@ -73,6 +82,12 @@ public class RoomServiceImpl implements RoomService{
         log.info("Deleting room with ID:{}",roomId);
         Room room = roomRepository.findById(roomId)
                         .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: "+ roomId));
+
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if(!user.equals(room.getHotel().getOwner())){
+            throw new UnauthorizedException("This user does not own this room with id: "+room);
+        }
         inventoryService.deleteAllInventories(room);
         roomRepository.deleteById(roomId);
 
