@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -57,5 +58,79 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             @Param("roomsCount") Integer roomsCount
     );
 
+
+    @Query("""
+            SELECT i
+            FROM Inventory i
+            WHERE i.room.id = :roomId
+            AND i.date BETWEEN :startDate AND :endDate
+            AND (i.totalCount - i.bookCount) >= :numberOfRooms
+            AND i.closed = false\s
+           \s""")
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Inventory> findAndLockReservedInventory(
+            @Param("roomId") Long roomId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("roomsCount") int numberOfRooms
+    );
+
+    @Modifying
+    @Query("""
+            UPDATE Inventory i\s
+                    SET  i.reservedCount = i.reservedCount + :numberOfRooms
+                    WHERE i.room.id = :roomId
+                        and i.date BETWEEN :startDate AND :endDate
+                        and (i.totalCount - i.bookCount - i.reservedCount) >= :numberOfRooms
+                        and i.closed = false
+           \s""")
+    void initBooking(
+            @Param("roomId") Long roomId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("roomsCount") int numberOfRooms
+    );
+
     List<Inventory> findByHotelAndDateBetween(Hotel hotel, LocalDateTime dateAfter, LocalDateTime dateBefore);
+
+
+    @Modifying
+    @Query("""
+            UPDATE Inventory i\s
+                    SET i.reservedCount = i.reservedCount - :numberOfRooms,
+                        i.bookCount = i.bookCount + :numberOfRooms
+                    WHERE i.room.id = :roomId
+                        and i.date BETWEEN :startDate AND :endDate
+                        and (i.totalCount - i.bookCount) >= :numberOfRooms
+                        and i.reservedCount >= :numberOfRooms
+                        and i.closed = false
+       \s""")
+    void confirmBooking(
+            @Param("roomId") Long roomId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("numberOfRooms") int numberOfRooms
+    );
+
+
+    @Modifying
+    @Query("""
+            UPDATE Inventory i\s
+                    SET  i.bookCount = i.bookCount - :numberOfRooms
+                    WHERE i.room.id = :roomId
+                        and i.date BETWEEN :startDate AND :endDate
+                        and (i.totalCount - i.bookCount) >= :numberOfRooms
+                        and i.closed = false
+       \s""")
+    void cancelBooking(
+            @Param("roomId") Long roomId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("numberOfRooms") int numberOfRooms
+    );
+
+
+
+
+
 }
