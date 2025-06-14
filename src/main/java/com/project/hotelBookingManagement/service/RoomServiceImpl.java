@@ -1,6 +1,7 @@
 package com.project.hotelBookingManagement.service;
 
 import com.project.hotelBookingManagement.config.MapperConfig;
+import com.project.hotelBookingManagement.dto.HotelDto;
 import com.project.hotelBookingManagement.dto.RoomDto;
 import com.project.hotelBookingManagement.entity.Hotel;
 import com.project.hotelBookingManagement.entity.Room;
@@ -18,6 +19,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.project.hotelBookingManagement.util.AppUtils.getCurrentUser;
+import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
 
 
 @Service
@@ -92,5 +96,32 @@ public class RoomServiceImpl implements RoomService{
         roomRepository.deleteById(roomId);
 
 
+    }
+
+    @Override
+    @Transactional
+    public RoomDto updateRoomById(Long hotelId, Long roomId, RoomDto roomDto) {
+        log.info("Updating the Room with the ID: {}", roomId);
+        Hotel hotel = hotelRepository
+                .findById(hotelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with ID: "+roomId));
+
+        User user = getCurrentUser();
+
+        if(!user.equals(hotel.getOwner())){
+            throw new UnauthorizedException("This user does not own this hotel with id: "+id);
+        }
+
+        Room room = roomRepository
+                .findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found with ID: "+roomId));
+
+
+
+        modelMapper.map(roomDto,room);
+        room.setId(roomId);
+        room = roomRepository.save(room);
+        //TODO: Update the inventory as well for price changes
+        return modelMapper.map(room, RoomDto.class);
     }
 }

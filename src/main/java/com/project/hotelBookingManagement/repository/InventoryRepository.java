@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -130,7 +131,39 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     );
 
 
+    List<Inventory> findByRoom(Room room);
 
+    List<Inventory> findByRoomOrderByDate(Room room);
 
+    List<Inventory> findByRoomOrderByDateDesc(Room room);
+
+    List<Inventory> findByRoomOrderByDateAsc(Room room);
+
+    @Query("""
+            select i from Inventory i
+                    WHERE i.room.id = :roomId
+                        and i.date BETWEEN :startDate AND :endDate
+       \s""")
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    void getInventoryAndLockBeforeUpdate(
+            @Param("roomId") Long roomId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+    @Modifying
+    @Query("""
+            UPDATE Inventory i\s
+                    SET  i.surgeFactor = :surgeFactor,
+                           i.closed = :closed
+                    WHERE i.room.id = :roomId
+                        and i.date BETWEEN :startDate AND :endDate
+       \s""")
+    void updateInventory(
+            @Param("roomId") Long roomId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("closed") boolean closed,
+            @Param("surgeFactor")BigDecimal surgeFactor
+            );
 
 }

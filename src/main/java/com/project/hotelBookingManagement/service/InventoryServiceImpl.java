@@ -1,14 +1,15 @@
 package com.project.hotelBookingManagement.service;
 
 
-import com.project.hotelBookingManagement.dto.HotelDto;
-import com.project.hotelBookingManagement.dto.HotelPriceDto;
-import com.project.hotelBookingManagement.dto.HotelSearchRequest;
+import com.project.hotelBookingManagement.dto.*;
 import com.project.hotelBookingManagement.entity.Hotel;
 import com.project.hotelBookingManagement.entity.Inventory;
 import com.project.hotelBookingManagement.entity.Room;
+import com.project.hotelBookingManagement.entity.User;
+import com.project.hotelBookingManagement.exception.ResourceNotFoundException;
 import com.project.hotelBookingManagement.repository.HotelMinPriceRepository;
 import com.project.hotelBookingManagement.repository.InventoryRepository;
+import com.project.hotelBookingManagement.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -19,9 +20,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.math.BigDecimal;
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.project.hotelBookingManagement.util.AppUtils.getCurrentUser;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +37,7 @@ public class InventoryServiceImpl implements InventoryService{
     private final InventoryRepository inventoryRepository;
     private final ModelMapper modelMapper;
     private final HotelMinPriceRepository hotelMinPriceRepository;
+    private final RoomRepository roomRepository;
 
     @Override
     public void initializeRoomForYear(Room room) {
@@ -82,6 +89,33 @@ public class InventoryServiceImpl implements InventoryService{
 //                dateCount,pageable
 //        );
         return hotelPage;
+
+    }
+
+    @Override
+    public List<InventoryDto> getAllInventoryByRoom(Long roomId) throws AccessDeniedException {
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: "+roomId));
+
+        User user = getCurrentUser();
+        if(!user.equals(room.getHotel().getOwner())) throw new AccessDeniedException("You are not authorized");
+        return inventoryRepository.findByRoomOrderByDateAsc(room).stream().map((element) -> modelMapper.map(element, InventoryDto.class))
+                .collect(Collectors.toList());
+
+
+    }
+
+    @Override
+    public void updateInventory(Long roomId, UpdateInventoryRequestDto updateInventoryRequestDto) throws AccessDeniedException {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: "+roomId));
+
+        User user = getCurrentUser();
+        if(!user.equals(room.getHotel().getOwner())) throw new AccessDeniedException("You are not authorized");
+
+        inventoryRepository.getInventoryAndLockBeforeUpdate(roomId,updateInventoryRequestDto.getStartDate(),updateInventoryRequestDto.getEndDate());
+        inventoryRepository.updateInventory(roomId,updateInventoryRequestDto.getStartDate(),updateInventoryRequestDto.getEndDate(),updateInventoryRequestDto.getClosed(),updateInventoryRequestDto.getSurgeFactor());
 
     }
 }
